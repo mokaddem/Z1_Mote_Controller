@@ -38,8 +38,8 @@
  *         Joakim Eriksson <joakime@sics.se>
  */
 
-#include <stdio.h>
 #include "contiki.h"
+#include <stdio.h>
 #include "dev/button-sensor.h"
 #include "dev/leds.h"
 #include "dev/z1-phidgets.h"

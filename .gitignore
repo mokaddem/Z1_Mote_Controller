@@ -3,3 +3,5 @@
 *.map
 *.z1
 *.ihex
+*.zoul
+obj_z1/*
