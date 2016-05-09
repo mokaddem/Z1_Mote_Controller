@@ -4,4 +4,6 @@
 *.z1
 *.ihex
 *.zoul
-obj_z1/*
+obj_z1/
+symbols.*
+*.swp
