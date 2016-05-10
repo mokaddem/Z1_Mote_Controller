@@ -62,17 +62,20 @@ PROCESS_THREAD(test_button_process, ev, data)
 	switch(pushed(yAxis)){
     		case bot:
 			//putchar('b');
-printf("b\n");
+                        printf("b\n");
 			break;
 		case top:
+                        printf("t\n");
 			break;
 		default:
 			break;
 	}
 	switch(pushed(xAxis)){
-    	case left:
+    	        case left:
+                        printf("l\n");
 			break;
 		case right:
+                        printf("r\n");
 			break;
 		default:
 			break;
