@@ -2,7 +2,9 @@
 #include <stdio.h>
 #include "dev/button-sensor.h"
 #include "dev/leds.h"
+//#include "net/rime/rime.h"
 #include "dev/z1-phidgets.h"
+#include "dev/slip.h"
 
 static int pushed(int Axis);
 
@@ -26,12 +28,25 @@ int baseY = 1906; //PHIDGET3V_1
 PROCESS(test_button_process, "Test Button & Phidgets");
 AUTOSTART_PROCESSES(&test_button_process);
 /*---------------------------------------------------------------------------*/
+/*static void
+recv_uc(struct unicast_conn *c, const linkaddr_t *from)
+{
+  printf("unicast message received from %d.%d\n",
+	 from->u8[0], from->u8[1]);
+}
+static const struct unicast_callbacks unicast_callbacks = {recv_uc};
+static struct unicast_conn uc;*/
+/*---------------------------------------------------------------------------*/
 PROCESS_THREAD(test_button_process, ev, data)
 {
   static struct etimer et;
   PROCESS_BEGIN();
   SENSORS_ACTIVATE(phidgets);
   SENSORS_ACTIVATE(button_sensor);
+  //linkaddr_t addr;
+  //unicast_open(&uc, 146, &unicast_callbacks);
+  // SLIP
+  slip_arch_init(BAUD2UBR(115200));
 
   while(1) {
     etimer_set(&et, CLOCK_SECOND/2);
@@ -41,25 +56,22 @@ PROCESS_THREAD(test_button_process, ev, data)
     //PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
     //leds_toggle(LEDS_GREEN);
     //printf("Button clicked\n");
-    printf("Phidget 5V 2:%d\n", phidgets.value(PHIDGET5V_2));
-    printf("Phidget 3V 1:%d\n", phidgets.value(PHIDGET3V_1));
+    //printf("Phidget 5V 2:%d\n", phidgets.value(PHIDGET5V_2));
+    //printf("Phidget 3V 1:%d\n", phidgets.value(PHIDGET3V_1));
 
 	switch(pushed(yAxis)){
-    	case bot:
-			printf("Pushed Bot\n");
+    		case bot:
+			putchar('b');
 			break;
 		case top:
-			printf("Pushed Top\n");
 			break;
 		default:
 			break;
 	}
 	switch(pushed(xAxis)){
     	case left:
-			printf("Pushed Left\n");
 			break;
 		case right:
-			printf("Pushed Right\n");
 			break;
 		default:
 			break;
@@ -85,11 +97,45 @@ PROCESS_THREAD(test_button_process, ev, data)
 	  printf("Pushed Right\n");
     }
 */
+    /*packetbuf_copyfrom("Hello", 5);
+    addr.u8[0] = 1;
+    addr.u8[1] = 0;
+    if(!linkaddr_cmp(&addr, &linkaddr_node_addr)) {
+      unicast_send(&uc, &addr);
+    }*/
 
   }
   PROCESS_END();
 }
+/*---------------------------------------------------------------------------*/
+/* SLIP */
+int
+putchar(int c)
+{
+#define SLIP_END     0300
+  static char debug_frame = 0;
 
+  if(!debug_frame) {            /* Start of debug output */
+    slip_arch_writeb(SLIP_END);
+    slip_arch_writeb('\r');     /* Type debug line == '\r' */
+    debug_frame = 1;
+  }
+
+  /* Need to also print '\n' because for example COOJA will not show
+     any output before line end */
+  slip_arch_writeb((char)c);
+
+  /*
+   * Line buffered output, a newline marks the end of debug output and
+   * implicitly flushes debug output.
+   */
+  if(c == '\n') {
+    slip_arch_writeb(SLIP_END);
+    debug_frame = 0;
+  }
+  return c;
+}
+/*---------------------------------------------------------------------------*/
 int pushed(int Axis){
 	int errorInterval = 200;
 	int curVal = Axis == xAxis ? phidgets.value(phiX) : phidgets.value(phiY);
