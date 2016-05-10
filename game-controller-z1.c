@@ -4,6 +4,7 @@
 #include "dev/leds.h"
 //#include "net/rime/rime.h"
 #include "dev/z1-phidgets.h"
+#include "sys/clock.h"
 //#include "dev/slip.h"
 
 static int pushed(int Axis);
@@ -47,6 +48,7 @@ PROCESS_THREAD(test_button_process, ev, data)
   //unicast_open(&uc, 146, &unicast_callbacks);
   // SLIP
   //slip_arch_init(BAUD2UBR(115200));
+  clock_init();
 
   while(1) {
     etimer_set(&et, CLOCK_SECOND/2);
@@ -80,6 +82,7 @@ PROCESS_THREAD(test_button_process, ev, data)
 		default:
 			break;
 	}
+	clock_wait(20);
 
 /*
 	if (pushed(yAxis)) {

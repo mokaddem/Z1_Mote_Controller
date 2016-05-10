@@ -1,5 +1,6 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 import serial
+import subprocess
 ser = serial.Serial(
    port='/dev/ttyUSB0',\
    baudrate=115200,\
@@ -12,13 +13,16 @@ ser.write("help\n");
 while True:
 	line = ser.readline();
 	if line:
-		print(line);
 		if "b" in line:
-			print("bottom");
+			#print("bottom");
+			subprocess.call(["/usr/bin/xdotool","key","Down"])
 		if "t" in line:
-			print("top");
+			subprocess.call(["/usr/bin/xdotool","key","Up"])
+			#print("top");
 		if "l" in line:
-			print("left");
+			subprocess.call(["/usr/bin/xdotool","key","Left"])
+			#print("left");
 		if "r" in line:
-			print("right");
+			subprocess.call(["/usr/bin/xdotool","key","Right"])
+			#print("right");
 ser.close()
