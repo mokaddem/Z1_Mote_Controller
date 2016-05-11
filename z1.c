@@ -1,13 +1,13 @@
 #include "contiki.h"
-#include <stdio.h>
+#include "net/rime/rime.h"
 #include "dev/button-sensor.h"
 #include "dev/leds.h"
-//#include "net/rime/rime.h"
 #include "dev/z1-phidgets.h"
 #include "sys/clock.h"
-//#include "dev/slip.h"
+#include <stdio.h>
 
 static int pushed(int Axis);
+static void send(char* direction);
 
 #define xAxis 0
 #define yAxis 1
@@ -25,29 +25,30 @@ static int pushed(int Axis);
 int baseX = 1167; //PHIDGET5V_2
 int baseY = 1906; //PHIDGET3V_1
 
-bool wired=true;
+int wired=1;
 
 /*---------------------------------------------------------------------------*/
 PROCESS(test_button_process, "Test Button & Phidgets");
 AUTOSTART_PROCESSES(&test_button_process);
 /*---------------------------------------------------------------------------*/
+static struct broadcast_conn broadcast;
 PROCESS_THREAD(test_button_process, ev, data)
 {
   static struct etimer et;
   PROCESS_BEGIN();
   SENSORS_ACTIVATE(phidgets);
   SENSORS_ACTIVATE(button_sensor);
-  //linkaddr_t addr;
-  //unicast_open(&uc, 146, &unicast_callbacks);
-  // SLIP
-  //slip_arch_init(BAUD2UBR(115200));
+  
   clock_init();
+  
+  // Open a broadcast connection
+  broadcast_open(&broadcast, 129, NULL);
 
   while(1) {
     etimer_set(&et, CLOCK_SECOND/2);
     //printf("Please press the User Button\n");
     //PROCESS_WAIT_EVENT_UNTIL(ev == sensors_event && data == &button_sensor);
-
+	printf("button sensor %d\n", button_sensor.value(userButton));
     //PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
 	switch(pushed(yAxis)){
