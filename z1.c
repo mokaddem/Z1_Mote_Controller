@@ -24,18 +24,11 @@ static int pushed(int Axis);
 int baseX = 1167; //PHIDGET5V_2
 int baseY = 1906; //PHIDGET3V_1
 
+int wired=1;
+
 /*---------------------------------------------------------------------------*/
 PROCESS(test_button_process, "Test Button & Phidgets");
 AUTOSTART_PROCESSES(&test_button_process);
-/*---------------------------------------------------------------------------*/
-/*static void
-recv_uc(struct unicast_conn *c, const linkaddr_t *from)
-{
-  printf("unicast message received from %d.%d\n",
-	 from->u8[0], from->u8[1]);
-}
-static const struct unicast_callbacks unicast_callbacks = {recv_uc};
-static struct unicast_conn uc;*/
 /*---------------------------------------------------------------------------*/
 static struct broadcast_conn broadcast;
 PROCESS_THREAD(test_button_process, ev, data)
@@ -56,61 +49,28 @@ PROCESS_THREAD(test_button_process, ev, data)
     //PROCESS_WAIT_EVENT_UNTIL(ev == sensors_event && data == &button_sensor);
 
     //PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
-    //leds_toggle(LEDS_GREEN);
-    //printf("Button clicked\n");
-    //printf("Phidget 5V 2:%d\n", phidgets.value(PHIDGET5V_2));
-    //printf("Phidget 3V 1:%d\n", phidgets.value(PHIDGET3V_1));
 
 	switch(pushed(yAxis)){
     		case bot:
-			//putchar('b');
-                        printf("b\n");
+                        send("b\n");
 			break;
 		case top:
-                        printf("t\n");
+                        send("t\n");
 			break;
 		default:
 			break;
 	}
 	switch(pushed(xAxis)){
     	        case left:
-                        printf("l\n");
+                        send("l\n");
 			break;
 		case right:
-                        printf("r\n");
+                        send("r\n");
 			break;
 		default:
 			break;
 	}
 	clock_wait(20);
-
-/*
-	if (pushed(yAxis)) {
-      leds_on(LEDS_RED);
-	  leds_off(LEDS_BLUE);
-	  printf("Pushed Bot\n");
-    } else {
-      leds_off(LEDS_RED);
-	  leds_on(LEDS_BLUE);
-	  printf("Pushed Top\n");
-    }
-    if (pushed(xAxis)) {
-      leds_on(LEDS_GREEN);
-      leds_off(LEDS_YELLOW);
-	  printf("Pushed Left\n");
-    } else {
-      leds_off(LEDS_GREEN);
-      leds_on(LEDS_YELLOW);
-	  printf("Pushed Right\n");
-    }
-*/
-    /*packetbuf_copyfrom("Hello", 5);
-    addr.u8[0] = 1;
-    addr.u8[1] = 0;
-    if(!linkaddr_cmp(&addr, &linkaddr_node_addr)) {
-      unicast_send(&uc, &addr);
-    }*/
-
   }
   PROCESS_END();
 }
@@ -134,3 +94,11 @@ int pushed(int Axis){
 	}
 }
 /*---------------------------------------------------------------------------*/
+void send(char* direction){
+	if(wired){
+		printf(direction);
+	} else {
+		packetbuf_copyfrom(direction,2);
+		broadcast_send(&broadcast);
+	}
+}
