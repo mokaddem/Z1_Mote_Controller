@@ -5,5 +5,8 @@
 *.ihex
 *.zoul
 obj_z1/
+obj_zoul/
 symbols.*
 *.swp
+*.bin
+*.elf
