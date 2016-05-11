@@ -2,10 +2,9 @@
 #include <stdio.h>
 #include "dev/button-sensor.h"
 #include "dev/leds.h"
-//#include "net/rime/rime.h"
 #include "dev/z1-phidgets.h"
 #include "sys/clock.h"
-//#include "dev/slip.h"
+#include "net/rime/rime.h"
 
 static int pushed(int Axis);
 
@@ -38,17 +37,18 @@ recv_uc(struct unicast_conn *c, const linkaddr_t *from)
 static const struct unicast_callbacks unicast_callbacks = {recv_uc};
 static struct unicast_conn uc;*/
 /*---------------------------------------------------------------------------*/
+static struct broadcast_conn broadcast;
 PROCESS_THREAD(test_button_process, ev, data)
 {
   static struct etimer et;
   PROCESS_BEGIN();
   SENSORS_ACTIVATE(phidgets);
   SENSORS_ACTIVATE(button_sensor);
-  //linkaddr_t addr;
-  //unicast_open(&uc, 146, &unicast_callbacks);
-  // SLIP
-  //slip_arch_init(BAUD2UBR(115200));
+  
   clock_init();
+  
+  // Open a broadcast connection
+  broadcast_open(&broadcast, 129, &broadcast_call);
 
   while(1) {
     etimer_set(&et, CLOCK_SECOND/2);
