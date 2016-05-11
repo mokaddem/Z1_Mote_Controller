@@ -69,6 +69,7 @@ PROCESS_THREAD(example_broadcast_process, ev, data)
   broadcast_open(&broadcast, 129, &broadcast_call);
 
   while(1) {
+
     /* Delay 2-4 seconds */
     etimer_set(&et, CLOCK_SECOND * 4 + random_rand() % (CLOCK_SECOND * 4));
 
