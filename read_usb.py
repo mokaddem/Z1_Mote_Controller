@@ -14,15 +14,11 @@ while True:
 	line = ser.readline();
 	if line:
 		if "b" in line:
-			#print("bottom");
 			subprocess.call(["/usr/bin/xdotool","key","Down"])
 		if "t" in line:
 			subprocess.call(["/usr/bin/xdotool","key","Up"])
-			#print("top");
 		if "l" in line:
 			subprocess.call(["/usr/bin/xdotool","key","Left"])
-			#print("left");
 		if "r" in line:
 			subprocess.call(["/usr/bin/xdotool","key","Right"])
-			#print("right");
 ser.close()
