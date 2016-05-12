@@ -47,13 +47,13 @@
 
 #include <stdio.h>
 /*---------------------------------------------------------------------------*/
-PROCESS(example_broadcast_process, "Broadcast example");
+PROCESS(example_broadcast_process, "Remote game controller receiver");
 AUTOSTART_PROCESSES(&example_broadcast_process);
 /*---------------------------------------------------------------------------*/
 static void
 broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 {
-  printf("%s\n",(char *)packetbuf_dataptr());
+  printf("%s",(char *)packetbuf_dataptr());
 }
 static const struct broadcast_callbacks broadcast_call = {broadcast_recv};
 static struct broadcast_conn broadcast;
@@ -69,9 +69,7 @@ PROCESS_THREAD(example_broadcast_process, ev, data)
   broadcast_open(&broadcast, 129, &broadcast_call);
 
   while(1) {
-
-    /* Delay 2-4 seconds */
-    etimer_set(&et, CLOCK_SECOND * 4 + random_rand() % (CLOCK_SECOND * 4));
+    etimer_set(&et, 1);
 
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
   }
