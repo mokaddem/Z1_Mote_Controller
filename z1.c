@@ -39,11 +39,11 @@
 
 #include "contiki.h"
 #include "net/rime/rime.h"
-#include "random.h"
 
 #include "dev/button-sensor.h"
 #include "dev/z1-phidgets.h"
 #include "dev/adxl345.h"
+#include "dev/battery-sensor.h"
 
 #include "dev/leds.h"
 
@@ -69,10 +69,12 @@ int baseX = 1167; //PHIDGET5V_2
 int baseY = 1906; //PHIDGET3V_1
 
 // This is changed in order to be in wired or wireless mode.
-int wired=1;
+int wired=0;
+// Battery level 
+int batteryLow=0;
 
 /*---------------------------------------------------------------------------*/
-PROCESS(z1_game_controller, "Broadcast example");
+PROCESS(z1_game_controller, "Z1 game controller");
 AUTOSTART_PROCESSES(&z1_game_controller);
 /*---------------------------------------------------------------------------*/
 static void
@@ -87,7 +89,7 @@ static struct broadcast_conn broadcast;
 PROCESS_THREAD(z1_game_controller, ev, data)
 {
   static struct etimer et;
-  int16_t x, y, z;
+  int16_t x, y;
 
   PROCESS_EXITHANDLER(broadcast_close(&broadcast);)
 
@@ -96,6 +98,7 @@ PROCESS_THREAD(z1_game_controller, ev, data)
   SENSORS_ACTIVATE(phidgets);
   SENSORS_ACTIVATE(button_sensor);
   SENSORS_ACTIVATE(adxl345);
+  SENSORS_ACTIVATE(battery_sensor);
  
   broadcast_open(&broadcast, 129, &broadcast_call);
 
@@ -136,19 +139,23 @@ PROCESS_THREAD(z1_game_controller, ev, data)
    
     x = adxl345.value(X_AXIS);
     y = adxl345.value(Y_AXIS);
-    z = adxl345.value(Z_AXIS);
 
     if(x > 130){
       send("n\n");
     } else if(x < -130){
       send("s\n");
-    } else if(y > 130){
+    } 
+    if(y > 130){
       send("o\n");
     } else if(y < -130){
       send("e\n");
     }
 
-    //printf("x: %d y: %d z: %d\n", x, y, z);
+    /* Switch mode button sensor */
+    if(data == &button_sensor){
+       printf("Change wired");
+       wired=(wired+1)%2;
+    }
   }
 
   PROCESS_END();

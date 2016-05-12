@@ -8,7 +8,7 @@ ser = serial.Serial(
    stopbits=serial.STOPBITS_ONE,\
    bytesize=serial.EIGHTBITS,\
    timeout=0)
-print("connected to: " + ser.portstr)
+print("connected to: " + ser.name)
 ser.write("help\n");
 while True:
 	line = ser.readline();
