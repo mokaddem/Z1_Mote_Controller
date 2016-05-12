@@ -30,13 +30,6 @@
  *
  */
 
-/**
- * \file
- *         Testing the broadcast layer in Rime
- * \author
- *         Adam Dunkels <adam@sics.se>
- */
-
 #include "contiki.h"
 #include "net/rime/rime.h"
 
