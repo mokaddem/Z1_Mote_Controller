@@ -3,17 +3,17 @@ import serial
 import subprocess
 
 def startControl():
+        # Open the serial port in order to receive data from the z1/remote
 	ser = serial.Serial(
 	   port='/dev/ttyUSB0',\
 	   baudrate=115200,\
 	   parity=serial.PARITY_NONE,\
 	   stopbits=serial.STOPBITS_ONE,\
 	   bytesize=serial.EIGHTBITS,\
-	   timeout=0)
+	   timeout=5)
 	print("connected to: " + ser.portstr)
-	ser.write("help\n");
 	while True:
-		line = ser.readline();
+		line = ser.readline(); 
 		if line:
 			if "b" in line or "s" in line:
 				subprocess.call(["/usr/bin/xdotool","key","Down"])

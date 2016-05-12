@@ -45,17 +45,18 @@
 #include "dev/z1-phidgets.h"
 #include "dev/adxl345.h"
 #include "dev/battery-sensor.h"
-
 #include "dev/leds.h"
 
 #include <stdio.h>
 
+// Functions
 static int pushed(int Axis);
 static void send(char* direction);
 
+// Axis
 #define xAxis 0
 #define yAxis 1
-
+// Directions
 #define noDir 0
 #define left 1
 #define right 2
@@ -64,10 +65,9 @@ static void send(char* direction);
 
 #define phiX PHIDGET5V_2
 #define phiY PHIDGET3V_1
-#define userButton 0 // button USR
-
 #define LOW_BATTERY_LEVEL 500
 
+// Default values forthe Joystick
 int baseX = 1167; //PHIDGET5V_2
 int baseY = 1906; //PHIDGET3V_1
 
@@ -77,60 +77,64 @@ int wired=1;
 int batteryLow=0;
 
 /*---------------------------------------------------------------------------*/
+/*------------------------------- PROCESSES ---------------------------------*/
 PROCESS(z1_game_controller, "Z1 game controller");
 PROCESS(test_battery_process, "Battery Sensor Test");
 PROCESS(test_button_process, "Button sensor test");
 AUTOSTART_PROCESSES(&z1_game_controller, &test_battery_process, &test_button_process);
 /*---------------------------------------------------------------------------*/
+/*------------ Function needed for Rime (not used) --------------------------*/
 static void
 broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 {
-  /*printf("broadcast message received from %d.%d: '%s'\n",
-         from->u8[0], from->u8[1], (char *)packetbuf_dataptr());*/
+  // Nothing
 }
+// Sructures for Rime
 static const struct broadcast_callbacks broadcast_call = {broadcast_recv};
 static struct broadcast_conn broadcast;
 /*---------------------------------------------------------------------------*/
+/*-------------------------- Main Process -----------------------------------*/
 PROCESS_THREAD(z1_game_controller, ev, data)
 {
   static struct etimer et;
   int16_t x, y;
 
   PROCESS_EXITHANDLER(broadcast_close(&broadcast);)
-
   PROCESS_BEGIN();
+
   // Activate sensors
   SENSORS_ACTIVATE(phidgets);
   SENSORS_ACTIVATE(adxl345);
  
 
-  // initiate broadcast
+  // Initialization broadcast
   broadcast_open(&broadcast, 129, &broadcast_call);
 
   while(1) {
+    char dataToSend[6] = "";
+    int index = 0;
 
-    /* Delay */
+    /* Set the timer */
     etimer_set(&et, 20);
-
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
     
    /* Joystick */
     switch(pushed(yAxis)){
 	case bot:
-                send("b\n");
+                dataToSend[index++]='b';
 		break;
 	case top:
-                send("t\n");
+                dataToSend[index++]='t';
 		break;
 	default:
 		break;
     }
     switch(pushed(xAxis)){
         case left:
-                send("l\n");
+                dataToSend[index++]='l';
 		break;
 	case right:
-                send("r\n");
+                dataToSend[index++]='r';
 		break;
 	default:
 		break;
@@ -142,20 +146,28 @@ PROCESS_THREAD(z1_game_controller, ev, data)
     y = adxl345.value(Y_AXIS);
 
     if(x > 130){
-      send("n\n");
+      dataToSend[index++]='n';
     } else if(x < -130){
-      send("s\n");
+      dataToSend[index++]='s';
     } 
     if(y > 130){
-      send("o\n");
+      dataToSend[index++]='o';
     } else if(y < -130){
-      send("e\n");
+      dataToSend[index++]='e';
+    }
+
+    /** If there was an input (index>0), we send */
+    if(index!=0){
+	dataToSend[index++]='\n';
+        dataToSend[index]='\0';
+        send(dataToSend);
     }
   }
 
   PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/
+/*---------------- Function used to test the Joystick -----------------------*/
 int pushed(int Axis){
 	int errorInterval = 200;
 	int curVal = Axis == xAxis ? phidgets.value(phiX) : phidgets.value(phiY);
@@ -173,12 +185,12 @@ int pushed(int Axis){
 	}
 }
 /*---------------------------------------------------------------------------*/
-/* Function sending the char either on the USB/serial or with RIME */
+/* ---- Function sending the data either on the USB/serial or with RIME -----*/
 void send(char* direction){
 	if(wired){
 		printf(direction);
 	} else {
-		packetbuf_copyfrom(direction,2);
+		packetbuf_copyfrom(direction,sizeof(direction));
 		broadcast_send(&broadcast);
 	}
 }
@@ -193,8 +205,9 @@ PROCESS_THREAD(test_battery_process, ev, data)
   leds_off(LEDS_RED); // first, turn the leds off
   
   while(1) {
-    /* Timer */
-    etimer_set(&et, CLOCK_SECOND * 60 * 5); //define a 60 seconds timer
+    /* Set the timer */
+    etimer_set(&et, CLOCK_SECOND * 60 * 5); // 5 min timer
+    // We have to deactivate the phidget sensor in order to activate the battery_sensor
     SENSORS_DEACTIVATE(phidgets);
     SENSORS_ACTIVATE(battery_sensor);
     uint16_t batteria = battery_sensor.value(0);
@@ -203,9 +216,15 @@ PROCESS_THREAD(test_battery_process, ev, data)
     } else {
 	leds_off(LEDS_RED);
     }
-    printf("BATTERY\n");
+    // Reactivate the phidget sensor
     SENSORS_DEACTIVATE(battery_sensor);
     SENSORS_ACTIVATE(phidgets);
+    
+    // Send to the application that the mode has changed
+    char text[20] = "";
+    sprintf(text, "battery:%d\n", batteria);
+    send(text);
+
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
   }
 
@@ -216,7 +235,6 @@ PROCESS_THREAD(test_battery_process, ev, data)
  * Turn on the RED led if the battery is getting under the LOW_BATTERY_LEVEL. */
 PROCESS_THREAD(test_button_process, ev, data)
 {
-  //static struct etimer et;
   PROCESS_BEGIN();
 
   SENSORS_ACTIVATE(button_sensor);
@@ -235,7 +253,10 @@ PROCESS_THREAD(test_button_process, ev, data)
        leds_on(LEDS_BLUE);
        leds_off(LEDS_GREEN);
     }
-    printf("Mode changed");
+    // Send to the application that the mode has changed
+    char text[20] = "";
+    sprintf(text, "mode:%d\n", wired);
+    send(text);
   }
 
   PROCESS_END();
