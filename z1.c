@@ -66,7 +66,7 @@ static void send(char* direction);
 #define phiY PHIDGET3V_1
 #define userButton 0 // button USR
 
-#define LOW_BATTERY_LEVEL = 500
+#define LOW_BATTERY_LEVEL 500
 
 int baseX = 1167; //PHIDGET5V_2
 int baseY = 1906; //PHIDGET3V_1
@@ -78,7 +78,9 @@ int batteryLow=0;
 
 /*---------------------------------------------------------------------------*/
 PROCESS(z1_game_controller, "Z1 game controller");
-AUTOSTART_PROCESSES(&z1_game_controller, &test_battery_process);
+PROCESS(test_battery_process, "Battery Sensor Test");
+PROCESS(test_button_process, "Button sensor test");
+AUTOSTART_PROCESSES(&z1_game_controller, &test_battery_process, &test_button_process);
 /*---------------------------------------------------------------------------*/
 static void
 broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
@@ -99,10 +101,9 @@ PROCESS_THREAD(z1_game_controller, ev, data)
   PROCESS_BEGIN();
   // Activate sensors
   SENSORS_ACTIVATE(phidgets);
-  SENSORS_ACTIVATE(button_sensor);
   SENSORS_ACTIVATE(adxl345);
-  SENSORS_ACTIVATE(battery_sensor);
  
+
   // initiate broadcast
   broadcast_open(&broadcast, 129, &broadcast_call);
 
@@ -150,12 +151,6 @@ PROCESS_THREAD(z1_game_controller, ev, data)
     } else if(y < -130){
       send("e\n");
     }
-
-    /* Switch mode button sensor */
-    if(data == &button_sensor){
-       printf("Change wired");
-       wired=(wired+1)%2;
-    }
   }
 
   PROCESS_END();
@@ -190,31 +185,58 @@ void send(char* direction){
 /*---------------------------------------------------------------------------*/
 /* Process reading the battery status every minute. 
  * Turn on the RED led if the battery is getting under the LOW_BATTERY_LEVEL. */
-PROCESS(test_battery_process, "Battery Sensor Test");
 PROCESS_THREAD(test_battery_process, ev, data)
 {
   static struct etimer et;
   PROCESS_BEGIN();
 
-  SENSORS_ACTIVATE(battery_sensor);
-
   leds_off(LEDS_RED); // first, turn the leds off
   
-  etimer_set(&et, CLOCK_SECOND * 60); //define a 60 seconds timer
-
   while(1) {
-    uint16_t bateria = battery_sensor.value(0);
+    /* Timer */
+    etimer_set(&et, CLOCK_SECOND * 60 * 5); //define a 60 seconds timer
+    SENSORS_DEACTIVATE(phidgets);
+    SENSORS_ACTIVATE(battery_sensor);
+    uint16_t batteria = battery_sensor.value(0);
     if (batteria < LOW_BATTERY_LEVEL){
-		leds_on(LEDS_RED);
-	} else {
-		leds_off(LEDS_RED);
-	}
-	/* Delay */
-    etimer_reset(&et);
+	leds_on(LEDS_RED);
+    } else {
+	leds_off(LEDS_RED);
+    }
+    printf("BATTERY\n");
+    SENSORS_DEACTIVATE(battery_sensor);
+    SENSORS_ACTIVATE(phidgets);
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
   }
 
-  SENSORS_DEACTIVATE(battery_sensor);
+  PROCESS_END();
+}
+/*---------------------------------------------------------------------------*/
+/* Process reading the battery status every minute. 
+ * Turn on the RED led if the battery is getting under the LOW_BATTERY_LEVEL. */
+PROCESS_THREAD(test_button_process, ev, data)
+{
+  //static struct etimer et;
+  PROCESS_BEGIN();
+
+  SENSORS_ACTIVATE(button_sensor);
+ 
+  // Show that wired mode is activated
+  leds_on(LEDS_BLUE);
+
+  while(1) {
+    PROCESS_WAIT_EVENT_UNTIL(ev == sensors_event &&
+                             data == &button_sensor);
+    wired=(wired+1)%2;
+    if(wired==0){
+       leds_off(LEDS_BLUE);
+       leds_on(LEDS_GREEN);
+    } else {
+       leds_on(LEDS_BLUE);
+       leds_off(LEDS_GREEN);
+    }
+    printf("Mode changed");
+  }
 
   PROCESS_END();
 }
