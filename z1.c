@@ -43,7 +43,7 @@
 
 #include "dev/button-sensor.h"
 #include "dev/z1-phidgets.h"
-#include "sys/clock.h"
+#include "dev/adxl345.h"
 
 #include "dev/leds.h"
 
@@ -68,7 +68,8 @@ static void send(char* direction);
 int baseX = 1167; //PHIDGET5V_2
 int baseY = 1906; //PHIDGET3V_1
 
-int wired=0;
+// This is changed in order to be in wired or wireless mode.
+int wired=1;
 
 /*---------------------------------------------------------------------------*/
 PROCESS(z1_game_controller, "Broadcast example");
@@ -77,8 +78,8 @@ AUTOSTART_PROCESSES(&z1_game_controller);
 static void
 broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 {
-  printf("broadcast message received from %d.%d: '%s'\n",
-         from->u8[0], from->u8[1], (char *)packetbuf_dataptr());
+  /*printf("broadcast message received from %d.%d: '%s'\n",
+         from->u8[0], from->u8[1], (char *)packetbuf_dataptr());*/
 }
 static const struct broadcast_callbacks broadcast_call = {broadcast_recv};
 static struct broadcast_conn broadcast;
@@ -86,19 +87,22 @@ static struct broadcast_conn broadcast;
 PROCESS_THREAD(z1_game_controller, ev, data)
 {
   static struct etimer et;
+  int16_t x, y, z;
 
   PROCESS_EXITHANDLER(broadcast_close(&broadcast);)
 
   PROCESS_BEGIN();
+  // Activate sensors
   SENSORS_ACTIVATE(phidgets);
   SENSORS_ACTIVATE(button_sensor);
-
+  SENSORS_ACTIVATE(adxl345);
+ 
   broadcast_open(&broadcast, 129, &broadcast_call);
 
   while(1) {
 
-    /* Delay 2-4 seconds */
-    etimer_set(&et, 10);
+    /* Delay */
+    etimer_set(&et, 20);
 
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
@@ -106,28 +110,45 @@ PROCESS_THREAD(z1_game_controller, ev, data)
     //broadcast_send(&broadcast);
     //printf("broadcast message sent\n");
     
+   /* Joystick */
     switch(pushed(yAxis)){
-    		case bot:
-                        send("b\n");
-			break;
-		case top:
-                        send("t\n");
-			break;
-		default:
-			break;
-	}
-	switch(pushed(xAxis)){
-    	        case left:
-                        send("l\n");
-			break;
-		case right:
-                        send("r\n");
-			break;
-		default:
-			break;
-	}
-    
-    
+	case bot:
+                send("b\n");
+		break;
+	case top:
+                send("t\n");
+		break;
+	default:
+		break;
+    }
+    switch(pushed(xAxis)){
+        case left:
+                send("l\n");
+		break;
+	case right:
+                send("r\n");
+		break;
+	default:
+		break;
+    }
+
+    /* Accelerometer */
+   
+    x = adxl345.value(X_AXIS);
+    y = adxl345.value(Y_AXIS);
+    z = adxl345.value(Z_AXIS);
+
+    if(x > 130){
+      send("n\n");
+    } else if(x < -130){
+      send("s\n");
+    } else if(y > 130){
+      send("o\n");
+    } else if(y < -130){
+      send("e\n");
+    }
+
+    //printf("x: %d y: %d z: %d\n", x, y, z);
   }
 
   PROCESS_END();
@@ -150,6 +171,7 @@ int pushed(int Axis){
 	}
 }
 /*---------------------------------------------------------------------------*/
+/* Function sending the char either on the USB/serial or with RIME */
 void send(char* direction){
 	if(wired){
 		printf(direction);
