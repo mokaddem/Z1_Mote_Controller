@@ -55,33 +55,35 @@ def manageControllerInput():
 	   timeout=5)
 	print("connected to: " + ser.portstr)
 	while True:
-		line = ser.readline();
-		line = line.decode('utf-8')
-		if line:
-			if "battery" in line:
-				batteryLevel(line)
-			elif "mode" in line:
-				changeMode(line)
-			else:
+		try:
+			line = ser.readline();
+			line = line.decode('utf-8')
+			if line:
 				if "battery" in line:
 					batteryLevel(line)
-				if "b" in line:
-					subprocess.call(["/usr/bin/xdotool","key", JOY_DOWN])
-				if "t" in line:
-					subprocess.call(["/usr/bin/xdotool","key", JOY_UP])
-				if "l" in line:
-					subprocess.call(["/usr/bin/xdotool","key", JOY_LEFT])
-				if "r" in line:
-					subprocess.call(["/usr/bin/xdotool","key", JOY_RIGHT])
-				if "s" in line:
-					subprocess.call(["/usr/bin/xdotool","key", ACC_DOWN])
-				if "n" in line:
-					subprocess.call(["/usr/bin/xdotool","key", ACC_UP])
-				if "o" in line:
-					subprocess.call(["/usr/bin/xdotool","key", ACC_LEFT])
-				if "e" in line:
-					subprocess.call(["/usr/bin/xdotool","key", ACC_RIGHT])
-
+				elif "mode" in line:
+					changeMode(line)
+				else:
+					if "battery" in line:
+						batteryLevel(line)
+					if "b" in line:
+						subprocess.call(["/usr/bin/xdotool","key", JOY_DOWN])
+					if "t" in line:
+						subprocess.call(["/usr/bin/xdotool","key", JOY_UP])
+					if "l" in line:
+						subprocess.call(["/usr/bin/xdotool","key", JOY_LEFT])
+					if "r" in line:
+						subprocess.call(["/usr/bin/xdotool","key", JOY_RIGHT])
+					if "s" in line:
+						subprocess.call(["/usr/bin/xdotool","key", ACC_DOWN])
+					if "n" in line:
+						subprocess.call(["/usr/bin/xdotool","key", ACC_UP])
+					if "o" in line:
+						subprocess.call(["/usr/bin/xdotool","key", ACC_LEFT])
+					if "e" in line:
+						subprocess.call(["/usr/bin/xdotool","key", ACC_RIGHT])
+		except:
+			pass
 	ser.close()
 
 def takeInput(key):
@@ -148,6 +150,7 @@ def changeMode(line):
 	global THE_LED	
 	value = line.split(":")
 	mode = int(value[-1])
+	print("mode="+str(mode))
 	if mode == 1: #wired
 		THE_LED.set(COLOR_BLUE)
 	else: #Wireless
@@ -167,7 +170,7 @@ mainframe.columnconfigure(0, weight=1)
 mainframe.rowconfigure(0, weight=1)
 
 #Elements
-ttk.Label(mainframe, text="Click on a button to bind the key!", font=appHighlightFont).grid(column=2, row=0, columnspan=4, sticky=N)
+ttk.Label(mainframe, text="Click on a button to bind a key!", font=appHighlightFont).grid(column=2, row=0, columnspan=4, sticky=N)
 
 #Joystick
 ttk.Button(mainframe, text="Left", command=lambda: showMsg("Jleft")).grid(column=0, row=2, sticky=E)
@@ -213,7 +216,7 @@ Color2 = ttk.Label(mainframe, text="Running in wirless mode", foreground=COLOR_G
 Color2.grid(column=0, row=9, sticky=W)
 Color3 = ttk.Label(mainframe, text="Running in wired mode", foreground=COLOR_BLUE, background="black")
 Color3.grid(column=0, row=10, sticky=W)
-Color4 = ttk.Label(mainframe, text="Running mode unknown for the moment", foreground=COLOR_ORANGE, background="black")
+Color4 = ttk.Label(mainframe, text="Running mode unknow for the moment", foreground=COLOR_ORANGE, background="black")
 Color4.grid(column=0, row=11, sticky=W)
 
 #LEDS - Show Connection State
