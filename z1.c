@@ -179,7 +179,7 @@ int pushed(int Axis){
 }
 /*---------------------------------------------------------------------------*/
 /* ---- Function sending the data either on the USB/serial or with RIME -----*/
-void send(char* direction){
+void send(char direction[]){
 	if(wired){
 		printf(direction);
 	} else {
@@ -215,7 +215,7 @@ PROCESS_THREAD(test_battery_process, ev, data)
     
     // Send to the application that the mode has changed
     char text[20] = "";
-    sprintf(text, "battery:%d\n", batteria);
+    sprintf(text, "battery:%d\n\0", batteria);
     send(text);
 
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
@@ -248,7 +248,7 @@ PROCESS_THREAD(test_button_process, ev, data)
     }
     // Send to the application that the mode has changed
     char text[20] = "";
-    sprintf(text, "mode:%d\n", wired);
+    sprintf(text, "mode:%d\n\0", wired);
     send(text);
   }
 
