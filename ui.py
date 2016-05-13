@@ -10,6 +10,8 @@ import serial
 import subprocess
 
 #Variables
+
+
 COLOR_RED = '#ff4422'
 COLOR_GREEN = '#00FF33'
 COLOR_BLUE = '#3333cc'
@@ -20,6 +22,7 @@ SERIAL = ''
 CONTROL = ''
 THE_LED = ''
 THE_BATTERY = ''
+THE_START_BUTTON = ''
 
 JOY_UP = "Up"
 JOY_DOWN = "Down"
@@ -31,12 +34,14 @@ ACC_LEFT = "Left"
 ACC_RIGHT = "Right"
 
 def startController():
-	global THE_LED
-	THE_LED.set(COLOR_GREEN)
+	global THE_LED 
+	global THE_START_BUTTON
+	THE_LED.set(COLOR_ORANGE)
 	t = threading.Thread(target=manageControllerInput)	
 	t.daemon = True  # thread dies when main thread (only non-daemon thread) exits.	
 	try:
 		t.start()
+		THE_START_BUTTON['state'] = 'disabled'
 	except:
 		print("Error: unable to start controller software")
 
@@ -50,28 +55,35 @@ def manageControllerInput():
 	   timeout=5)
 	print("connected to: " + ser.portstr)
 	while True:
-		line = ser.readline();
-		line = line.decode('utf-8')
-		if line:
-			if "battery" in line:
-				batteryLevel(line)
-			if "b" in line:
-				subprocess.call(["/usr/bin/xdotool","key", JOY_DOWN])
-			if "t" in line:
-				subprocess.call(["/usr/bin/xdotool","key", JOY_UP])
-			if "l" in line:
-				subprocess.call(["/usr/bin/xdotool","key", JOY_LEFT])
-			if "r" in line:
-				subprocess.call(["/usr/bin/xdotool","key", JOY_RIGHT])
-			if "s" in line:
-				subprocess.call(["/usr/bin/xdotool","key", ACC_DOWN])
-			if "n" in line:
-				subprocess.call(["/usr/bin/xdotool","key", ACC_UP])
-			if "o" in line:
-				subprocess.call(["/usr/bin/xdotool","key", ACC_LEFT])
-			if "e" in line:
-				subprocess.call(["/usr/bin/xdotool","key", ACC_RIGHT])
-
+		try:
+			line = ser.readline();
+			line = line.decode('utf-8')
+			if line:
+				if "battery" in line:
+					batteryLevel(line)
+				elif "mode" in line:
+					changeMode(line)
+				else:
+					if "battery" in line:
+						batteryLevel(line)
+					if "b" in line:
+						subprocess.call(["/usr/bin/xdotool","key", JOY_DOWN])
+					if "t" in line:
+						subprocess.call(["/usr/bin/xdotool","key", JOY_UP])
+					if "l" in line:
+						subprocess.call(["/usr/bin/xdotool","key", JOY_LEFT])
+					if "r" in line:
+						subprocess.call(["/usr/bin/xdotool","key", JOY_RIGHT])
+					if "s" in line:
+						subprocess.call(["/usr/bin/xdotool","key", ACC_DOWN])
+					if "n" in line:
+						subprocess.call(["/usr/bin/xdotool","key", ACC_UP])
+					if "o" in line:
+						subprocess.call(["/usr/bin/xdotool","key", ACC_LEFT])
+					if "e" in line:
+						subprocess.call(["/usr/bin/xdotool","key", ACC_RIGHT])
+		except:
+			pass
 	ser.close()
 
 def takeInput(key):
@@ -130,11 +142,25 @@ def showMsg(var):
 def batteryLevel(line):
 	global THE_BATTERY	
 	value = line.split(":")
+	batteryLevel = int(value[-1])/38
+	print("batteryLevel: "+ str(batteryLevel));
 	THE_BATTERY.step(int(value[-1])/38)
+
+def changeMode(line):	
+	global THE_LED	
+	value = line.split(":")
+	mode = int(value[-1])
+	print("mode="+str(mode))
+	if mode == 1: #wired
+		THE_LED.set(COLOR_BLUE)
+	else: #Wireless
+		THE_LED.set(COLOR_GREEN)
+
     
 #UI Init
 root = Tk()
 root.title("Key binder for Z1 Controler")
+
 appHighlightFont = font.Font(family='Helvetica', size=15, weight='bold')
 font.families()
 
@@ -144,7 +170,7 @@ mainframe.columnconfigure(0, weight=1)
 mainframe.rowconfigure(0, weight=1)
 
 #Elements
-ttk.Label(mainframe, text="Click on a button to bind the key!", font=appHighlightFont).grid(column=2, row=0, columnspan=4, sticky=N)
+ttk.Label(mainframe, text="Click on a button to bind a key!", font=appHighlightFont).grid(column=2, row=0, columnspan=4, sticky=N)
 
 #Joystick
 ttk.Button(mainframe, text="Left", command=lambda: showMsg("Jleft")).grid(column=0, row=2, sticky=E)
@@ -174,8 +200,24 @@ ttk.Label(mainframe, text="").grid(column=0, row=4, sticky=W)
 ttk.Label(mainframe, text="Battery level:").grid(column=0, row=5, sticky=E)
 battery = ttk.Progressbar(mainframe, orient=HORIZONTAL, length=200, mode='determinate')
 battery.grid(column=1, row=5, columnspan=4, sticky=W)
+battery.step(0)
 THE_BATTERY = battery
-battery.step(batteryLevel("battery:2800"))
+
+#Start button
+THE_START_BUTTON = ttk.Button(mainframe, text="Start the controller!", command=startController)
+THE_START_BUTTON.grid(column=4, row=6, sticky=N)
+
+#Texts
+Intro = ttk.Label(mainframe, text="Led indicators:", font=appHighlightFont)
+Intro.grid(column=0, row=7, sticky=W)
+Color1 = ttk.Label(mainframe, text="Controler not started", foreground=COLOR_RED, background="black")
+Color1.grid(column=0, row=8, sticky=W)
+Color2 = ttk.Label(mainframe, text="Running in wirless mode", foreground=COLOR_GREEN, background="black")
+Color2.grid(column=0, row=9, sticky=W)
+Color3 = ttk.Label(mainframe, text="Running in wired mode", foreground=COLOR_BLUE, background="black")
+Color3.grid(column=0, row=10, sticky=W)
+Color4 = ttk.Label(mainframe, text="Running mode unknow for the moment", foreground=COLOR_ORANGE, background="black")
+Color4.grid(column=0, row=11, sticky=W)
 
 #LEDS - Show Connection State
 leds = [(2, 15, 15, RAISED, 1, None, "")]
@@ -189,9 +231,9 @@ for shape, w, h, app, bd, orient, outline in leds:
 theLed.set(COLOR_RED)
 THE_LED = theLed
 
-#Start button
-ttk.Button(mainframe, text="Start the controller!", command=startController).grid(column=4, row=6, sticky=N)
+
 
 #Configuration + Mainloop
 for child in mainframe.winfo_children(): child.grid_configure(padx=5, pady=5)
+
 root.mainloop()
