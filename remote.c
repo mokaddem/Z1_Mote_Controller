@@ -30,47 +30,39 @@
  *
  */
 
-/**
- * \file
- *         Testing the broadcast layer in Rime
- * \author
- *         Adam Dunkels <adam@sics.se>
- */
-
 #include "contiki.h"
 #include "net/rime/rime.h"
-#include "random.h"
-
-#include "dev/button-sensor.h"
-
-#include "dev/leds.h"
-
 #include <stdio.h>
+
 /*---------------------------------------------------------------------------*/
-PROCESS(example_broadcast_process, "Remote game controller receiver");
-AUTOSTART_PROCESSES(&example_broadcast_process);
+PROCESS(remote_controller, "Remote game controller receiver");
+AUTOSTART_PROCESSES(&remote_controller);
 /*---------------------------------------------------------------------------*/
+/*--------------- Callback function for broadcast messages ------------------*/
 static void
 broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 {
+  // Print the data in the packet on the serial(USB) port
   printf("%s",(char *)packetbuf_dataptr());
 }
+/*---------------------------------------------------------------------------*/
+/*------------------- Structures for the broadcast --------------------------*/
 static const struct broadcast_callbacks broadcast_call = {broadcast_recv};
 static struct broadcast_conn broadcast;
 /*---------------------------------------------------------------------------*/
-PROCESS_THREAD(example_broadcast_process, ev, data)
+/*-------------------------- Main Process -----------------------------------*/
+PROCESS_THREAD(remote_controller, ev, data)
 {
   static struct etimer et;
 
   PROCESS_EXITHANDLER(broadcast_close(&broadcast);)
-
   PROCESS_BEGIN();
 
   broadcast_open(&broadcast, 129, &broadcast_call);
 
   while(1) {
+    // Infinite loop to avoid that the process finish, timer to avoid using 100% CPU
     etimer_set(&et, 1);
-
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
   }
 
