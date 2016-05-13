@@ -1,13 +1,56 @@
+/*
+ * Copyright (c) 2007, Swedish Institute of Computer Science.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of the Institute nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE INSTITUTE AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE INSTITUTE OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ *
+ * This file is part of the Contiki operating system.
+ *
+ */
+
+/**
+ * \file
+ *         Testing the broadcast layer in Rime
+ * \author
+ *         Adam Dunkels <adam@sics.se>
+ */
+
 #include "contiki.h"
-#include <stdio.h>
+#include "net/rime/rime.h"
+#include "random.h"
+
 #include "dev/button-sensor.h"
-#include "dev/leds.h"
-//#include "net/rime/rime.h"
 #include "dev/z1-phidgets.h"
-#include "sys/clock.h"
-//#include "dev/slip.h"
+#include "dev/adxl345.h"
+
+#include "dev/leds.h"
+
+#include <stdio.h>
 
 static int pushed(int Axis);
+static void send(char* direction);
 
 #define xAxis 0
 #define yAxis 1
@@ -25,97 +68,91 @@ static int pushed(int Axis);
 int baseX = 1167; //PHIDGET5V_2
 int baseY = 1906; //PHIDGET3V_1
 
+// This is changed in order to be in wired or wireless mode.
+int wired=1;
+
 /*---------------------------------------------------------------------------*/
-PROCESS(test_button_process, "Test Button & Phidgets");
-AUTOSTART_PROCESSES(&test_button_process);
+PROCESS(z1_game_controller, "Broadcast example");
+AUTOSTART_PROCESSES(&z1_game_controller);
 /*---------------------------------------------------------------------------*/
-/*static void
-recv_uc(struct unicast_conn *c, const linkaddr_t *from)
+static void
+broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 {
-  printf("unicast message received from %d.%d\n",
-	 from->u8[0], from->u8[1]);
+  /*printf("broadcast message received from %d.%d: '%s'\n",
+         from->u8[0], from->u8[1], (char *)packetbuf_dataptr());*/
 }
-static const struct unicast_callbacks unicast_callbacks = {recv_uc};
-static struct unicast_conn uc;*/
+static const struct broadcast_callbacks broadcast_call = {broadcast_recv};
+static struct broadcast_conn broadcast;
 /*---------------------------------------------------------------------------*/
-PROCESS_THREAD(test_button_process, ev, data)
+PROCESS_THREAD(z1_game_controller, ev, data)
 {
   static struct etimer et;
+  int16_t x, y, z;
+
+  PROCESS_EXITHANDLER(broadcast_close(&broadcast);)
+
   PROCESS_BEGIN();
+  // Activate sensors
   SENSORS_ACTIVATE(phidgets);
   SENSORS_ACTIVATE(button_sensor);
-  //linkaddr_t addr;
-  //unicast_open(&uc, 146, &unicast_callbacks);
-  // SLIP
-  //slip_arch_init(BAUD2UBR(115200));
-  clock_init();
+  SENSORS_ACTIVATE(adxl345);
+ 
+  broadcast_open(&broadcast, 129, &broadcast_call);
 
   while(1) {
-    etimer_set(&et, CLOCK_SECOND/2);
-    //printf("Please press the User Button\n");
-    //PROCESS_WAIT_EVENT_UNTIL(ev == sensors_event && data == &button_sensor);
 
-    //PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
-    //leds_toggle(LEDS_GREEN);
-    //printf("Button clicked\n");
-    //printf("Phidget 5V 2:%d\n", phidgets.value(PHIDGET5V_2));
-    //printf("Phidget 3V 1:%d\n", phidgets.value(PHIDGET3V_1));
+    /* Delay */
+    etimer_set(&et, 20);
 
-	switch(pushed(yAxis)){
-    		case bot:
-			//putchar('b');
-                        printf("b\n");
-			break;
-		case top:
-                        printf("t\n");
-			break;
-		default:
-			break;
-	}
-	switch(pushed(xAxis)){
-    	        case left:
-                        printf("l\n");
-			break;
-		case right:
-                        printf("r\n");
-			break;
-		default:
-			break;
-	}
-	clock_wait(20);
+    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
-/*
-	if (pushed(yAxis)) {
-      leds_on(LEDS_RED);
-	  leds_off(LEDS_BLUE);
-	  printf("Pushed Bot\n");
-    } else {
-      leds_off(LEDS_RED);
-	  leds_on(LEDS_BLUE);
-	  printf("Pushed Top\n");
+    //packetbuf_copyfrom("Hello", 6);
+    //broadcast_send(&broadcast);
+    //printf("broadcast message sent\n");
+    
+   /* Joystick */
+    switch(pushed(yAxis)){
+	case bot:
+                send("b\n");
+		break;
+	case top:
+                send("t\n");
+		break;
+	default:
+		break;
     }
-    if (pushed(xAxis)) {
-      leds_on(LEDS_GREEN);
-      leds_off(LEDS_YELLOW);
-	  printf("Pushed Left\n");
-    } else {
-      leds_off(LEDS_GREEN);
-      leds_on(LEDS_YELLOW);
-	  printf("Pushed Right\n");
+    switch(pushed(xAxis)){
+        case left:
+                send("l\n");
+		break;
+	case right:
+                send("r\n");
+		break;
+	default:
+		break;
     }
-*/
-    /*packetbuf_copyfrom("Hello", 5);
-    addr.u8[0] = 1;
-    addr.u8[1] = 0;
-    if(!linkaddr_cmp(&addr, &linkaddr_node_addr)) {
-      unicast_send(&uc, &addr);
-    }*/
 
+    /* Accelerometer */
+   
+    x = adxl345.value(X_AXIS);
+    y = adxl345.value(Y_AXIS);
+    z = adxl345.value(Z_AXIS);
+
+    if(x > 130){
+      send("n\n");
+    } else if(x < -130){
+      send("s\n");
+    } else if(y > 130){
+      send("o\n");
+    } else if(y < -130){
+      send("e\n");
+    }
+
+    //printf("x: %d y: %d z: %d\n", x, y, z);
   }
+
   PROCESS_END();
 }
-/*---------------------------------------------------------------------------*/
-
 /*---------------------------------------------------------------------------*/
 int pushed(int Axis){
 	int errorInterval = 200;
@@ -134,3 +171,12 @@ int pushed(int Axis){
 	}
 }
 /*---------------------------------------------------------------------------*/
+/* Function sending the char either on the USB/serial or with RIME */
+void send(char* direction){
+	if(wired){
+		printf(direction);
+	} else {
+		packetbuf_copyfrom(direction,2);
+		broadcast_send(&broadcast);
+	}
+}
