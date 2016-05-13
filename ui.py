@@ -11,17 +11,29 @@ COLOR_GREEN = '#00FF33'
 COLOR_BLUE = '#3333cc'
 COLOR_ORANGE = '#ffcc00'
 USER_CAN_INPUT = 0
+WINDOW_POPUP = ''
 
 #Functions
-def takeInput(*var):
+def takeInput(key):
+	global USER_CAN_INPUT	
+	global WINDOW_POPUP
 	if USER_CAN_INPUT == 1:
-		print("yooo")
+		print("yoo:" + str(key.char))
+	else:
+		print("nop")
 	USER_CAN_INPUT = 0
+	WINDOW_POPUP.destroy()
 
 def showMsg(var):
+	global USER_CAN_INPUT
+	global WINDOW_POPUP	
 	USER_CAN_INPUT = 1
-	messagebox.showwarning(message='Press a key.')
-	
+	inputWindow = Toplevel(mainframe)	
+	inputWindow.title('Input window')
+	inputWindow.geometry('300x200+300+120')
+	inputWindow.bind('<Key>', takeInput)
+	ttk.Label(inputWindow, text="Press a key!", font=appHighlightFont).grid(column=0, row=0, columnspan=4, sticky=N)
+	WINDOW_POPUP = inputWindow
 
 def batteryLevel():
 	return 25
@@ -29,7 +41,6 @@ def batteryLevel():
 #UI Init
 root = Tk()
 root.title("Key binder for Z1 Controler")
-
 appHighlightFont = font.Font(family='Helvetica', size=15, weight='bold')
 font.families()
 
@@ -84,5 +95,4 @@ theLed.set(COLOR_GREEN)
 
 #Configuration + Mainloop
 for child in mainframe.winfo_children(): child.grid_configure(padx=5, pady=5)
-root.bind('<Key>', takeInput)
 root.mainloop()
