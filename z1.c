@@ -42,6 +42,7 @@
 #include "random.h"
 
 #include "dev/button-sensor.h"
+#include "dev/battery-sensor.h"
 #include "dev/z1-phidgets.h"
 #include "dev/adxl345.h"
 
@@ -65,6 +66,8 @@ static void send(char* direction);
 #define phiY PHIDGET3V_1
 #define userButton 0 // button USR
 
+#define LOW_BATTERY_LEVEL = 500
+
 int baseX = 1167; //PHIDGET5V_2
 int baseY = 1906; //PHIDGET3V_1
 
@@ -72,8 +75,8 @@ int baseY = 1906; //PHIDGET3V_1
 int wired=1;
 
 /*---------------------------------------------------------------------------*/
-PROCESS(z1_game_controller, "Broadcast example");
-AUTOSTART_PROCESSES(&z1_game_controller);
+PROCESS(z1_game_controller, "Z1 game controller");
+AUTOSTART_PROCESSES(&z1_game_controller, &test_battery_process);
 /*---------------------------------------------------------------------------*/
 static void
 broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
@@ -97,6 +100,7 @@ PROCESS_THREAD(z1_game_controller, ev, data)
   SENSORS_ACTIVATE(button_sensor);
   SENSORS_ACTIVATE(adxl345);
  
+  // initiate broadcast
   broadcast_open(&broadcast, 129, &broadcast_call);
 
   while(1) {
@@ -105,10 +109,6 @@ PROCESS_THREAD(z1_game_controller, ev, data)
     etimer_set(&et, 20);
 
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
-
-    //packetbuf_copyfrom("Hello", 6);
-    //broadcast_send(&broadcast);
-    //printf("broadcast message sent\n");
     
    /* Joystick */
     switch(pushed(yAxis)){
@@ -180,3 +180,35 @@ void send(char* direction){
 		broadcast_send(&broadcast);
 	}
 }
+/*---------------------------------------------------------------------------*/
+/* Process reading the battery status every minute. 
+ * Turn on the RED led if the battery is getting under the LOW_BATTERY_LEVEL. */
+PROCESS(test_battery_process, "Battery Sensor Test");
+PROCESS_THREAD(test_battery_process, ev, data)
+{
+  static struct etimer et;
+  PROCESS_BEGIN();
+
+  SENSORS_ACTIVATE(battery_sensor);
+
+  leds_off(LEDS_RED); // first, turn the leds off
+  
+  etimer_set(&et, CLOCK_SECOND * 60); //define a 60 seconds timer
+
+  while(1) {
+    uint16_t bateria = battery_sensor.value(0);
+    if (batteria < LOW_BATTERY_LEVEL){
+		leds_on(LEDS_RED);
+	} else {
+		leds_off(LEDS_RED);
+	}
+	/* Delay */
+    etimer_reset(&et);
+    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+  }
+
+  SENSORS_DEACTIVATE(battery_sensor);
+
+  PROCESS_END();
+}
+/*---------------------------------------------------------------------------*/
