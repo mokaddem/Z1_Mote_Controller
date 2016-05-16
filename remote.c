@@ -43,7 +43,7 @@ static void
 broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 {
   // Print the data in the packet on the serial(USB) port
-  printf("%s",(char *)packetbuf_dataptr());
+  printf("%s\n",(char *)packetbuf_dataptr());
 }
 /*---------------------------------------------------------------------------*/
 /*------------------- Structures for the broadcast --------------------------*/
